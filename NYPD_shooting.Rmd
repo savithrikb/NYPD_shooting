@@ -1,0 +1,95 @@
+---
+title: "NYPD Shooting"
+author: "Savithri K Brahmadathan"
+date: "2023-08-06"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Introduction
+
+This project is about analyzing NYPD shooting data.
+
+## Getting the Data
+
+The data for this report comes from https://data.cityofnewyork.us/api/views/833y-fsy8/rows.csv?accessType=DOWNLOAD. It is read in as:
+
+```{r, results='hide', message=FALSE, warning=FALSE}
+library(tidyverse)
+nypd_data <- read_csv("https://data.cityofnewyork.us/api/views/833y-fsy8/rows.csv?accessType=DOWNLOAD")
+```
+
+```{r}
+nypd_data
+```
+
+```{r}
+nypd_by_date_and_boro <- nypd_data %>%
+  mutate(date = mdy(OCCUR_DATE)) %>%
+  arrange(date, BORO) %>%
+  select(date, BORO, STATISTICAL_MURDER_FLAG)# %>%
+nypd_by_date_and_boro
+```
+
+## NYC shooting by boro
+
+
+This document provides an analysis of the shooting data provided by the NYPD broken down by boro. This dataset contains data for a number of shooting incidents that occurred in different NYC boros between the years of 2006 and 2022. First, we look at the number of shootings that occurred in each boro, shown in both a table and a box plot below.
+
+```{r cars}
+num_shootings_boro <- nypd_by_date_and_boro %>%
+  group_by(BORO) %>%
+  summarize(total_shootings = length(date))
+summary(num_shootings_boro)
+```
+
+```{r echo = FALSE}
+num_shootings_boro <- nypd_by_date_and_boro %>%
+  group_by(BORO) %>%
+  summarize(total_shootings = length(date))
+num_shootings_boro %>%
+  ggplot(aes(x = BORO, y = total_shootings)) +
+  geom_col(aes(fill = total_shootings)) +
+  theme(legend.position = "bottom", axis.text.x = element_text(angle = 90)) +
+  labs(title = "NYC Shootings by Boro (2006 - 2022)")
+```
+
+We further look at the number of fatalities that occurred due to these shooting incidents in different boros, which are also plotted below.
+
+```{r echo = FALSE}
+num_fatalaties_boro <- nypd_by_date_and_boro %>%
+  filter(STATISTICAL_MURDER_FLAG) %>%
+  group_by(BORO) %>%
+  summarize(total_fatalities = length(date))
+num_fatalaties_boro %>%
+  ggplot(aes(x = BORO, y = total_fatalities)) +
+  geom_col(aes(fill = total_fatalities)) +
+  theme(legend.position = "bottom", axis.text.x = element_text(angle = 90)) +
+  labs(title = "NYC Fatalities by Boro (2006 - 2022)")
+```
+
+From these graphs, we can see that, at least qualitatively, the number of shootings appears to directly correspond to the number of fatalities, regardless of boro. In order to determine if this is truly the case, we further plot the fraction of shooting incidents that resulted in fatalities across boros.
+
+```{r echo = FALSE}
+fraction_shooting_fatality <- nypd_by_date_and_boro %>%
+  group_by(BORO) %>%
+  summarize(fraction_fatality = sum(STATISTICAL_MURDER_FLAG) / length(date))
+fraction_shooting_fatality %>%
+  ggplot(aes(x = BORO, y = fraction_fatality)) +
+  geom_col(aes(fill = fraction_fatality)) +
+  theme(legend.position = "bottom", axis.text.x = element_text(angle = 90)) +
+  labs(title = "Fraction of Shootings Resulting in Fatalities (NYC 2006 - 2022)")
+```
+
+## Possible Biases
+
+This analysis does not take into account potential environmental factors. E.g., the population of individual boros, the relative crime levels, or the relative wealth of the boros were not considered and may also have a large impact on both the number of shootings, as well as the fraction of shootings leading to a fatality.
+
+## Conclusion and Further Questions
+
+This data indicates that about 20% of all shooting incidents resulted in a fatality in NYC. However, it also shows that Manhattan has a slightly lower fraction (at around 18.5%). One question to answer would be: Is this because of better first-response time, better follow-up healthcare, statistical noise, or some other reason? If this difference is not merely due to statistical noise, then we may be able to reduce the number of fatalities in other boros by emulating the behavior of Manhattan.
